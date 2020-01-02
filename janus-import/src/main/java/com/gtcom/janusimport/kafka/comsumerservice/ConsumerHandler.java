@@ -2,6 +2,7 @@ package com.gtcom.janusimport.kafka.comsumerservice;
 
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 /**
  * @ClassName: ConsumerHandler
@@ -14,5 +15,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 public interface ConsumerHandler {
 
     void handle(ConsumerRecord record);
+
+    void handles(ConsumerRecords record);
 
 }

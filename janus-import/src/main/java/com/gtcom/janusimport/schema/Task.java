@@ -9,5 +9,11 @@ package com.gtcom.janusimport.schema;
 public interface Task {
   public void execute(String VtName, String EgName, String indexName, String edgeNme);
 
+  //public void createVerName(String VtName, String EgName, String indexName, String edgeNme);
+
+
+
+
+
 
 }

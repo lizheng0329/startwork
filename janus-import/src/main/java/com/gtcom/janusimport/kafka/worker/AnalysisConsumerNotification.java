@@ -5,6 +5,8 @@ import com.gtcom.janusimport.kafka.comsumerservice.ConsumerHandlerImp;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Properties;
@@ -19,7 +21,8 @@ public class AnalysisConsumerNotification {
 
     // private static Logger log = LoggerFactory.getLogger(JovebirdInsiderConsumerNotification.class);
 
-    protected static org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger( AnalysisConsumerNotification.class );
+    private static Logger logger = LoggerFactory.getLogger(AnalysisConsumerNotification.class);
+
     private final KafkaConsumer<String, String> consumer;
     private final String topic;
 
@@ -47,7 +50,7 @@ public class AnalysisConsumerNotification {
         props.put("auto.commit.interval.ms", "600000");
         props.put("session.timeout.ms", "30000");//根据实际项目情况调整
      //  props.put("auto.offset.reset", "latest");
-       props.put("auto.offset.reset", "earliest");
+      props.put("auto.offset.reset", "earliest");
         props.put("max.poll.records", "5");//根据实际项目情况调整
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
@@ -61,10 +64,22 @@ public class AnalysisConsumerNotification {
 
         if (consumerHandler != null) {
             while (true) {
+
                 ConsumerRecords<String, String> records = consumer.poll(100);
                 long startTime = System.currentTimeMillis();
                 for (final ConsumerRecord record : records) {
                     consumerHandler.handle(record);
+
+                }
+                if(records.isEmpty()){
+                    consumerHandler.handles(records);
+                    try{
+                        logger.info("休眠30秒");
+                        Thread.sleep(30*1000);
+
+                    }catch (Exception e){
+                        e.printStackTrace();
+                    }
 
                 }
             }

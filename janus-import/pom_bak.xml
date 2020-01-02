@@ -18,9 +18,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <janusgraph.version>0.4.0</janusgraph.version>
-        <!--    <hbase.version>1.2.6</hbase.version>-->
-        <hbase.version>2.0.2</hbase.version>
+        <janusgraph.version>0.3.0</janusgraph.version>
+            <hbase.version>1.2.6</hbase.version>
+     <!--   <hbase.version>1.2.0</hbase.version>-->
         <gremlin.version>3.3.1</gremlin.version>
         <!--    <zookeeper.version>3.4.6</zookeeper.version>
             <zkclient.version>0.10</zkclient.version>
@@ -36,6 +36,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web-services</artifactId>
+            <exclusions>
+                <exclusion>
+                    <artifactId>log4j-over-slf4j</artifactId>
+                    <groupId>org.slf4j</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
 <!--
@@ -75,6 +81,23 @@
             <version>${zkclient.version}</version>
         </dependency>
 -->
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>2.9.0</version>
+        </dependency>
+
+<!--        <dependency>
+                <groupId>com.google.code.gson</groupId>
+                  <artifactId>gson</artifactId>
+                   <version>1.7.2</version>
+        </dependency>-->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>1.7.2</version>
+        </dependency>
+
 
         <dependency>
         <groupId>org.springframework.kafka</groupId>
@@ -110,11 +133,13 @@
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-shaded-client</artifactId>
             <version>${hbase.version}</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-client</artifactId>
             <version>${hbase.version}</version>
+            <scope>runtime</scope>
             <exclusions>
                 <exclusion>
                     <artifactId>slf4j-log4j12</artifactId>
@@ -144,12 +169,6 @@
             <version>${janusgraph.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>redis.clients</groupId>
-            <artifactId>jedis</artifactId>
-            <version>2.9.0</version>
-        </dependency>
-
         <!--<dependency>
           <groupId>org.janusgraph</groupId>
           <artifactId>janusgraph-berkeleyje</artifactId>
@@ -161,7 +180,7 @@
         <dependency>
             <groupId>org.janusgraph</groupId>
             <artifactId>example-common</artifactId>
-            <version>0.4.0</version>
+            <version>0.3.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.janusgraph</groupId>
@@ -248,6 +267,57 @@
             <classifier>jdk15</classifier>
         </dependency>
 
+<!--
+        &lt;!&ndash;日志添加&ndash;&gt;
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.17</version>
+        </dependency>
+        &lt;!&ndash; https://mvnrepository.com/artifact/commons-lang/commons-lang &ndash;&gt;
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.5</version>
+        </dependency>
+-->
+
+        <!--slf4j-->
+<!--        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.25</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jcl-over-slf4j</artifactId>
+            <version>1.7.25</version>
+            <scope>runtime</scope>
+        </dependency>
+        &lt;!&ndash;log4j2&ndash;&gt;
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>2.11.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>2.11.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-web</artifactId>
+            <version>2.11.1</version>
+            <scope>runtime</scope>
+        </dependency>
+        &lt;!&ndash;log4j2+slf4j&ndash;&gt;
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>2.11.1</version>
+        </dependency>-->
+        <!--日志添加-->
 
     </dependencies>
     <build>

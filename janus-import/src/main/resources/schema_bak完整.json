@@ -83,9 +83,9 @@
   {"name":"endV","type":"String"}
 ]
 , "vertices": [
-  { "name": "TwitterTweet_1"}]
+  { "name": "TwitterTweet_1"},{ "name": "TwitterUser_1"},{ "name": "TwitterComment_1"}]
 , "edges": [
-  { "name": "follow_1"}]
+  { "name": "follow_1"},{ "name": "forward_1"},{ "name": "post_1"},{ "name": "comment_1"}]
 , "indexes": [
   { "name":"all_Test", "type":"Vertex","props": [
     {"name":"md5id","mapping":"TEXTSTRING"},

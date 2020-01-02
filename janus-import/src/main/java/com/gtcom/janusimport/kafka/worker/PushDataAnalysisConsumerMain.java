@@ -1,6 +1,8 @@
 package com.gtcom.janusimport.kafka.worker;
 
 import com.gtcom.janusimport.config.ImportConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @ClassName: PushDataAnalysisConsumerMain
@@ -10,7 +12,7 @@ import com.gtcom.janusimport.config.ImportConfiguration;
  */
 public class PushDataAnalysisConsumerMain {
 
-    protected static org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger( PushDataAnalysisConsumerMain.class );
+    private static Logger logger = LoggerFactory.getLogger(PushDataAnalysisConsumerMain.class);
     // private static Logger log = LoggerFactory.getLogger(InsiderIncreaseConsumerMain.class);
     private final String brokers = ImportConfiguration.kafkaUrl;
     private String groupId;
@@ -18,10 +20,10 @@ public class PushDataAnalysisConsumerMain {
     private int number;
     public PushDataAnalysisConsumerMain() {
     }
-    public PushDataAnalysisConsumerMain(String area, int number) {
+    public PushDataAnalysisConsumerMain(String area,String groupId,int number ) {
 
         this.topic = area;
-        this.groupId = area+"_new_consumer_5";
+        this.groupId = groupId;
         this.number = number;
     }
 

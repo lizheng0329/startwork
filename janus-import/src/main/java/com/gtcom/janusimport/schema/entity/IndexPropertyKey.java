@@ -74,6 +74,16 @@ public class IndexPropertyKey implements Serializable {
   }
 
 
+  @Override
+  public String toString() {
+    return "IndexPropertyKey{" +
+            "name='" + name + '\'' +
+            ", type=" + type +
+            ", mapping=" + mapping +
+            ", description='" + description + '\'' +
+            ", cardinality=" + cardinality +
+            '}';
+  }
 
   public String getName() {
     return name;

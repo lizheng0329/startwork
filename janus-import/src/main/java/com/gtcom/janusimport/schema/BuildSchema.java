@@ -4,24 +4,19 @@ package com.gtcom.janusimport.schema;
 import com.google.gson.GsonBuilder;
 import com.gtcom.janusimport.config.ImportConfiguration;
 import com.gtcom.janusimport.config.JanusGraphConfig;
-import com.gtcom.janusimport.schema.entity.IndexKey;
-import com.gtcom.janusimport.schema.entity.IndexPropertyKey;
 import com.gtcom.janusimport.schema.entity.Schema;
-import com.gtcom.janusimport.schema.enuminfo.Mapping;
+import org.apache.commons.lang.StringUtils;
 import org.janusgraph.core.EdgeLabel;
 import org.janusgraph.core.Multiplicity;
 import org.janusgraph.core.PropertyKey;
 import org.janusgraph.core.VertexLabel;
-import org.janusgraph.core.schema.ConsistencyModifier;
 import org.janusgraph.core.schema.EdgeLabelMaker;
-import org.janusgraph.core.schema.JanusGraphIndex;
 import org.janusgraph.core.schema.JanusGraphManagement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.FileReader;
-import java.util.List;
 
 /**
  * 创建Schema. // 初版,后续完善.
@@ -44,7 +39,11 @@ public class BuildSchema implements Task{
     try {
 
       Schema schema = new GsonBuilder().disableHtmlEscaping().create().fromJson(new FileReader(String.class.cast(options)),
-          Schema.class);
+          Schema.class)
+              ;
+
+
+
       // 初始化属性
        logger.info("开始初始化属性信息...");
        schema.getProps().forEach((p) -> {
@@ -63,7 +62,7 @@ public class BuildSchema implements Task{
       logger.info("结束初始化属性信息...");
 
 
-      if(VtName!=null){
+      if(StringUtils.isNotBlank(VtName)){
           // 初始化顶点类型
           logger.info("开始初始化顶点类型信息...");
           schema.getVertices().forEach((v) -> {
@@ -82,13 +81,15 @@ public class BuildSchema implements Task{
           logger.info("结束初始化顶点类型信息...");
       }
 
-      if(edgeNme!=null){
+      if(StringUtils.isNotBlank(EgName)){
           // 初始化关系类型
           logger.info("开始初始化关系类型信息...");
+          logger.info(">>>>>动态生成边名称>>>>>>"+EgName);
+          schema.getEdges().get(0).setName(EgName);
+          //e.setName(EgName);
           schema.getEdges().forEach((e) -> {
               // 判断关系类型是否存在
-              logger.info(">>>>>动态生成边名称>>>>>>"+EgName);
-              e.setName(EgName);
+
               if (mgmt.containsEdgeLabel(e.getName())) {
                   EdgeLabel hisEdgeLabel = mgmt.getEdgeLabel(e.getName());
                   logger.info("已存在  >> " + hisEdgeLabel.name() + " :: " + hisEdgeLabel.multiplicity());
@@ -109,7 +110,7 @@ public class BuildSchema implements Task{
           logger.info("开始初始化索引类型信息...");
       }
 
-      if(indexName!=null||edgeNme!=null){
+/*      if(StringUtils.isNotBlank(indexName)||StringUtils.isNotBlank(edgeNme)){
           logger.info(">>>>>动态生成索引名称>>>>>>"+indexName);
           List<IndexKey> List =schema.getIndexes();
           IndexKey i = null;
@@ -177,7 +178,7 @@ public class BuildSchema implements Task{
               }
 
 
-      }
+      }*/
         logger.info("结束初始化索引类型信息...");
         mgmt.commit();
 
@@ -192,4 +193,5 @@ public class BuildSchema implements Task{
     }
 
   }
+
 }

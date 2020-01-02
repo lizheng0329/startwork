@@ -6,16 +6,15 @@ import com.gtcom.janusimport.schema.BuildSchema;
 import com.gtcom.janusimport.until.RedisClient;
 import net.sf.json.JSONObject;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.janusgraph.core.schema.JanusGraphManagement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -31,7 +30,11 @@ public class ConsumerHandlerImp implements ConsumerHandler {
 
     private static Logger logger = LoggerFactory.getLogger(ConsumerHandlerImp.class);
     private static Logger log = LoggerFactory.getLogger(ConsumerHandlerImp.class);
-    private static  List<JSONObject> list = new ArrayList<>();
+    private static   List<JSONObject> listV = new ArrayList<>();
+    private static  List<JSONObject> listE = new ArrayList<>();
+    private  static  final Integer times = 12*60*60*1000;
+
+
     private ExecutorService executor;
     private int numberOfThreads;
     private  AtomicInteger total;
@@ -39,7 +42,7 @@ public class ConsumerHandlerImp implements ConsumerHandler {
     public ConsumerHandlerImp(int numberOfThreads) {
         this.numberOfThreads = numberOfThreads;
         executor = new ThreadPoolExecutor(numberOfThreads, numberOfThreads, 0L, TimeUnit.MILLISECONDS,
-                new ArrayBlockingQueue<>(1000), new ThreadPoolExecutor.CallerRunsPolicy());
+                new LinkedBlockingDeque<>(10), new ThreadPoolExecutor.CallerRunsPolicy());
          total = new AtomicInteger(1);
         startTime=System.currentTimeMillis();
     }
@@ -59,6 +62,7 @@ public class ConsumerHandlerImp implements ConsumerHandler {
             log.error("专题参数不是合法的json格式：{}", value, record.offset());
             log.error("异常信息：", e);
         }
+
 
          if(jsonObject!=null){
 
@@ -86,7 +90,7 @@ public class ConsumerHandlerImp implements ConsumerHandler {
                     }
                     if(!checkVname(VtName,indexName)){
                         logger.info("开始V建立索引");
-                        new BuildSchema().execute(VtName,EgName,indexName,edgeNme);
+                       new BuildSchema().execute(VtName,EgName,indexName,edgeNme);
                     }
                     if(!checkEname(EgName,edgeNme)){
                         logger.info("开始E建立索引");
@@ -94,18 +98,21 @@ public class ConsumerHandlerImp implements ConsumerHandler {
                     }
 
                 }else if(jsonObject.containsKey("EOF")&&("end").equals(jsonObject.getString("EOF"))){
+
                     if(VtName!=null){
-                        logger.info("本次消费；"+VtName+";共计数"+RedisClient.get(VtName));
-                        if(!list.isEmpty()){
-                            executor.submit(new DataImportPushTask(list,"V"));
-                            list.clear();
+                        if(!listV.isEmpty()){
+
+                            setEndValue(VtName);
+                            executor.submit(new DataImportPushTask(listV,"V"));
+                            listV = new ArrayList<>();
+
                         }
                     }
                     if(EgName!=null){
-                        logger.info("本次消费；"+EgName+";共计数"+RedisClient.get(VtName));
-                        if(!list.isEmpty()){
-                            executor.submit(new DataImportPushTask(list,"E"));
-                            list.clear();
+                        if(!listE.isEmpty()){
+                            setEndValue(EgName);
+                            executor.submit(new DataImportPushTask(listE,"E"));
+                            listE = new ArrayList<>();
                         }
 
                     }
@@ -113,21 +120,20 @@ public class ConsumerHandlerImp implements ConsumerHandler {
                    // logger.info("---正在消费信息 lable--"+jsonObject.toString());
                   //  logger.error("---------"+total.get()+"------");
                     RedisClient.incr(VtName);
-                    list.add(jsonObject);
-                    if(list.size()>10){
-                        executor.submit(new DataImportPushTask(list,"V"));
-                        list.clear();
+                    listV.add(jsonObject);
+                    if(listV.size()>100){
+                        executor.submit(new DataImportPushTask(listV,"V"));
+                        listV = new ArrayList<>();
 
                     }
                 }else if(jsonObject.containsKey("edgue")){
-                    logger.info("---正在消费信息 edgue --"+jsonObject.toString());
+                //    logger.info("---正在消费信息 edgue --"+jsonObject.toString());
                 //    logger.error("---------"+total.get()+"------");
                     RedisClient.incr(EgName);
-
-                    list.add(jsonObject);
-                    if(list.size()>10){
-                        executor.submit(new DataImportPushTask(list,"E"));
-                        list.clear();
+                    listE.add(jsonObject);
+                    if(listE.size()>100){
+                        executor.submit(new DataImportPushTask(listE,"E"));
+                        listE = new ArrayList<>();
                     }
 
                 }
@@ -135,11 +141,55 @@ public class ConsumerHandlerImp implements ConsumerHandler {
 
             }catch (Exception e){
 
+                e.printStackTrace();
             }
         }
 
+    }
+
+
+    public  void setEndValue(String key) {
+
+        long currTime =System.currentTimeMillis();
+        String allcounts = RedisClient.get(key);
+        String isExisted = RedisClient.get(key+"_isExisted");
+        String isCreated = RedisClient.get(key+"_isCreated");
+        HashMap map = new HashMap();
+        map.put("allcounts",allcounts);
+        map.put("isExisted",isExisted);
+        map.put("isCreated",isCreated);
+        try {
+            if(RedisClient.setKeyWithTime(key+"_"+currTime,map.toString(),times)){
+                logger.info("本次消费完成；数据集ID "+key+";共计数"+map.toString());
+            }else{
+                logger.info("本次消费完成；数据集ID "+key+";共计数"+map.toString());
+            }
+            RedisClient.del(key);
+            RedisClient.del(key+"_isExisted");
+            RedisClient.del(key+"_isCreated");
+
+        }catch (Exception E){
+
+        }
 
     }
+
+    @Override
+    public void handles(ConsumerRecords record) {
+        logger.info("消费完成----清理缓存数据");
+        if(!listE.isEmpty()){
+            executor.submit(new DataImportPushTask(listE,"E"));
+            listE.clear();
+        }
+        if(!listE.isEmpty()){
+            executor.submit(new DataImportPushTask(listV,"V"));
+            listV.clear();
+        }
+    }
+
+
+
+
 
     public  Boolean checkEname( String EgName, String edgeNme) {
         JanusGraphConfig janusGraphConfig = new JanusGraphConfig();

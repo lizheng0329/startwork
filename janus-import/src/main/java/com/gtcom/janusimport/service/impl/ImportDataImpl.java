@@ -1,9 +1,9 @@
 package com.gtcom.janusimport.service.impl;
 
 import com.gtcom.janusimport.config.JanusGraphConfig;
-import com.gtcom.janusimport.schema.ImportVertexNoCheckID;
 import com.gtcom.janusimport.service.ImportData;
 import com.gtcom.janusimport.until.InfoUnCompleteException;
+import com.gtcom.janusimport.until.RedisClient;
 import net.sf.json.JSONObject;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.DefaultGraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
@@ -27,7 +27,9 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class ImportDataImpl implements ImportData {
 
-    private static Logger logger = LoggerFactory.getLogger(ImportVertexNoCheckID.class);
+
+    private static Logger logger = LoggerFactory.getLogger(ImportDataImpl.class);
+
 
 
     @Override
@@ -52,35 +54,68 @@ public class ImportDataImpl implements ImportData {
 
                 String username =content.containsKey(uniqueField)?content.getString(uniqueField):null;
                 Integer bornTime=content.containsKey("inputTime")?content.getInt("inputTime"):null;
-                String usernameS =content.containsKey("userName")?content.getString("userName"):null;
                 if(bornTime.equals("")||bornTime==null){
                 content.put("inputTime",0);
                 }
                 content.remove("userName");
-                content.put("username",usernameS);
                 content.remove("collectCommentsFrequent");
                 content.remove("commentsScroll");
                 content.put("bornTime",0);
                 content.put("likes",0);
-            //    content.put("likes",0);
-        /*        if(content.containsKey("registeredTime")){
-                    String registeredTime = content.getString("registeredTime");
-                    if(registeredTime!=null){
-
-                        content.put("registeredTime",TimeToStamp(registeredTime));
-
-                    }
-                }*/
-        /*        if(content.containsKey("userJson")){
-                    String userJson = content.getString("userJson");
-                    if(userJson!=null){
-                        content.put("userJson",userJson);
-                    }
-                }*/
-
                 long vertexid = 0;
-
                 org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal<Vertex, Vertex> Vertex = g.V().hasLabel(lable).has(uniqueField,username);
+
+                List<java.lang.Object> ids =  Vertex.id().toList();
+
+
+              if(ids.size()==1){
+                  //redis 已存在计数
+                  RedisClient.incr(lable+"_isExisted");
+                  vertexid =(Long) ids.get(0);
+                  for (java.lang.Object key : content.keySet()) {
+                      if (key.equals("~id") || key.equals("~label") || key.equals("id") || key.equals("label")) { // 忽略~id & ~label & id & label
+                          continue;
+                      }
+
+                      g.V(vertexid).property(key.toString(), content.get(key));
+                      g.V(vertexid).property("uuid",vertexid);
+                      // logger.info("更新——————");
+                  }
+
+              }else {
+                    //全部删除重新建立
+                   if(ids.size()>1){
+                       ids.forEach(p->{
+                           g.V(p.toString()).drop().iterate();
+                           logger.info("删除重复的IDS;"+p.toString()+">>>");
+                       });
+                  }
+
+                  if(tx.isClosed()){
+                      tx=new JanusGraphConfig().graph.newTransaction();
+                  }
+                  //生成新节点
+                  v = tx.addVertex(org.apache.tinkerpop.gremlin.structure.T.label, lable);
+                  vertexid = (long) v.id();
+
+                  if (null == v) { // 生成新Vertex异常
+                      logger.info( " >> tempString :: " + content.toString() + " >> 生成新Vertex异常");
+                      return;
+                  }
+                  // 将数据中的其他字段添加到Vertex
+                  for (java.lang.Object key : content.keySet()) {
+                      if (key.equals("~id") || key.equals("~label") || key.equals("id") || key.equals("label")) { // 忽略~id & ~label & id & label
+                          continue;
+                      }
+                      v.property(key.toString(), content.get(key));
+                      v.property("uuid",vertexid);
+                  }
+                  logger.error( " >> 生成新的:: " + v.id() + " >> ");
+
+                  RedisClient.incr(lable+"_isCreated");
+              }
+
+            /*
                 if(Vertex.hasNext()){
                     v =  Vertex.next();
 
@@ -96,7 +131,9 @@ public class ImportDataImpl implements ImportData {
                         if (key.equals("~id") || key.equals("~label") || key.equals("id") || key.equals("label")) { // 忽略~id & ~label & id & label
                             continue;
                         }
+
                         g.V(vertexid).property(key.toString(), content.get(key));
+                        g.V(vertexid).property("uuid",vertexid);
                         // logger.info("更新——————");
                     }
 
@@ -106,7 +143,7 @@ public class ImportDataImpl implements ImportData {
                     }
                     //生成新节点
                     v = tx.addVertex(org.apache.tinkerpop.gremlin.structure.T.label, lable);
-
+                    vertexid = (long) v.id();
 
                     if (null == v) { // 生成新Vertex异常
                         logger.info( " >> tempString :: " + content.toString() + " >> 生成新Vertex异常");
@@ -118,15 +155,13 @@ public class ImportDataImpl implements ImportData {
                             continue;
                         }
                         v.property(key.toString(), content.get(key));
+                        v.property("uuid",vertexid);
                     }
                     logger.error( " >> 生成新的:: " + v.id() + " >> 生成新Vertex异常");
 
 
                 }
-
-
-
-
+*/
 
     }
 
@@ -137,6 +172,7 @@ public class ImportDataImpl implements ImportData {
         JSONObject content = null;
             if(object!=null){
                 content = object;
+                logger.info(">>正在处理数据>>"+content.toString());
             }else {
                 throw new InfoUnCompleteException("數據不能為空");
             }
@@ -164,6 +200,7 @@ public class ImportDataImpl implements ImportData {
             Vertex startV = null;
             Vertex endV = null;
             // 判断顶点是否存在
+
             org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal<Vertex, Vertex> starts = g.V().hasLabel(startlable).has(startField,startUser);
             org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal<Vertex, Vertex> endVs = g.V().hasLabel(endlable).has(endField,endUser);
 
@@ -173,65 +210,117 @@ public class ImportDataImpl implements ImportData {
             if (endVs.hasNext()) {
                 endV = endVs.next();
             }
-            System.err.println("--------startV-"+startV+"--------endV-"+endV);
+            String startUUID = null;
+            String endUUID = null;
+            logger.info("--------startV-"+startV+"--------endV-"+endV);
             if (null != startV && null != endV) {
                 Map map = checkIsExitEdge(startV.id(),endV.id(),g);
                 String flag = (String) ((AtomicReference)map.get("flag")).get();
-
+                startUUID = ""+ startV.id();
+                endUUID = ""+endV.id();
+                content.put("startV",startUUID);
+                content.put("endV",endUUID);
                 if("true".equals(flag)){
+
                     Edge e = startV.addEdge(lable, endV);
-                    for (Object key : content.keySet()) {
+
+
+                    for (java.lang.Object key : content.keySet()) {
 
                         e.property(key.toString(), content.get(key));
                     }
-                    System.out.println("Current Position >> " + "起始点::" + startV + " >> 结束点::" + endV + " >> 关系::" + lable+"  新增");
+                    RedisClient.incr(lable+"_isCreated");
+                    logger.info("Current Position >> " + "起始点::" + startV + " >> 结束点::" + endV + " >> 关系::" + lable+"  新增");
 
                 }else{
 
-                    for (Object key : content.keySet()) {
-                        g.E(map.get("id")).property(key.toString(), content.get(key)).next();
+                    for (java.lang.Object key : content.keySet()) {
+                        g.E(map.get("id")).property(key.toString(), content.get(key));
                     }
-                    System.out.println("Current Position >> " + "起始点::" + startV + " >> 结束点::" + endV + " >> 关系::" + lable+"  已存在");
+                    RedisClient.incr(lable+"_isExisted");
+                    logger.info("Current Position >> " + "起始点::" + startV + " >> 结束点::" + endV + " >> 关系::" + lable+"  已存在");
                 }
-                System.err.println("Current Position >> " + "起始点::" + startV + " >> 结束点::" + endV + " >> 关系::" + lable);
+                logger.info("Current Position >> " + "起始点::" + startV + " >> 结束点::" + endV + " >> 关系::" + lable);
             }
         /*    g.tx().commit();
             g.tx().open();*/
 
     }
 
-        public static Map checkIsExitEdge(Object outid,Object inid, GraphTraversalSource g) {
+        public synchronized Map checkIsExitEdge(java.lang.Object outid,java.lang.Object inid, GraphTraversalSource g) {
 
             AtomicReference<String> flag = new AtomicReference<>("true");
-            List<Object> id = g.V(outid).outE().id().toList();
             Map map = new HashMap();
+            List<java.lang.Object> startid = g.V(outid).outE().id().toList();
+            List<java.lang.Object> endids = g.V(inid).inE().id().toList();
+            if (startid.size() == 0 || endids.size() == 0) {
+                flag.set("true");
 
-            System.out.println(id.toString());
-            id.forEach(index -> {
-                DefaultGraphTraversal list6 = (DefaultGraphTraversal) g.E(index);
-                if (list6.hasNext()) {
-                    Edge e = (Edge) list6.next();
-                    if (id.size() > 1) {
+            }else if(startid.size() == 1 && endids.size() == 1){
+                if ((startid.get(0)).equals(endids.get(0))) {
+                    flag.set("false");
+                    logger.info("存在的ID"+endids.get(0));
+                    map.put("id",endids.get(0));
+                }
+            }else if((startid.size()>1 && endids.size()>=1)||(startid.size()>=1 && endids.size()>1)){
+                    startid.forEach(p ->{
+                        endids.forEach(p1->{
+                            if(p1.equals(p)){
+                                List<java.lang.Object> list6 = g.E(p).id().toList();
+                                list6.forEach(ids->{
+                                    logger.info("正在删除重复边"+ids+"");
+                                    g.E(ids).drop().iterate();
+                                });
+
+                            }
+                        });
+
+                    });
+                flag.set("ture");
+            }
+            map.put("flag", flag);
+            logger.info(map.toString() + ">>>>>>>>>>>>>>>>" + flag.get() + "~~~~~~" + map.get("flag") + "-----------" + map.get("id"));
+            return map;
+            }
+
+
+
+    public static Map checkIsExitEdges(Object outid,Object inid, GraphTraversalSource g) {
+
+        AtomicReference<Boolean> flag = new AtomicReference<>(false);
+        List<Object> id = g.V(outid).outE().id().toList();
+        Map map= new HashMap();
+        System.out.println(id.toString());
+        id.forEach(index->{
+            DefaultGraphTraversal list6 = (DefaultGraphTraversal) g.E(index);
+            if(list6.hasNext()){
+                Edge e = (Edge) list6.next();
+                if(id.size()>1){
+                    g.E(e.id()).drop().iterate();
+                    flag.set(true);
+                }else {
+                    if(e.inVertex().id().equals(inid)){
+                        map.put("id",e.id());
+                        flag.set(false);
+                    }else {
                         g.E(e.id()).drop().iterate();
-                        flag.set("true");
-                    } else {
-                        if (e.inVertex().id().equals(inid)) {
-                            map.put("id", e.id());
-                            flag.set("false");
-                        } else {
-                            g.E(e.id()).drop().iterate();
-                            flag.set("true");
-                        }
-
+                        flag.set(true);
                     }
 
                 }
-            });
-            map.put("flag",flag);
-            System.out.println(map.toString()+">>>>>>>>>>>>>>>>"+flag.get()+"~~~~~~"+map.get("flag")+"-----------"+map.get("id"));
 
-            return map;
+            }
+        });
+        System.out.println(">>>>>>>>>>>>>>>>"+flag.get()+"~~~~~~"+flag+"-----------"+map.get("id"));
 
-        }
+        map.put("flag",flag);
+
+        return map;
+
+
+
+    }
+
+
 
 }

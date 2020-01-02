@@ -14,10 +14,11 @@ public class JanusImportApplication {
         ApplicationContext applicationContext =SpringApplication.run(JanusImportApplication.class, args);
         SpringContextUtil.setApplicationContext(applicationContext);
 
-        /*PushDataAnalysisConsumerMain pushDataAnalysisConsumerMain = new PushDataAnalysisConsumerMain("twitter_tweet_forward",1);
-        pushDataAnalysisConsumerMain.startConsumer();*/
-        PushDataAnalysisConsumerMain pushDataAnalysisConsumerMain = new PushDataAnalysisConsumerMain("twitter_user_follow",2);
+
+        PushDataAnalysisConsumerMain pushDataAnalysisConsumerMain = new PushDataAnalysisConsumerMain(args[0],args[1],Integer.valueOf(args[2]));
         pushDataAnalysisConsumerMain.startConsumer();
+/*        PushDataAnalysisConsumerMain pushDataAnalysisConsumerMain = new PushDataAnalysisConsumerMain("twitter_user_follow",2);
+        pushDataAnalysisConsumerMain.startConsumer();*/
   /*      PushDataAnalysisConsumerMain pushDataAnalysisConsumerMains= new PushDataAnalysisConsumerMain("test_user",4);
         pushDataAnalysisConsumerMains.startConsumer();*/
 

@@ -24,11 +24,12 @@ public class DataImportPushTask implements Runnable {
 
 
     private static Logger logger = LoggerFactory.getLogger(ConsumerHandlerImp.class);
+
  /*   private ExecutorService executor;
     private int numberOfThreads = 1;
 
 
-   // private  String janusIndexPath = "D:\\JanusGraph\\JanusGraph\\src\\main\\resources\\schema.json";
+   // private  String janusIndexPath = "D:\\JanusGraph\\JanusGraph\\src\\main\\resources\\schema_baks.json";
 
     {
         executor = new ThreadPoolExecutor(numberOfThreads, numberOfThreads, 0L, TimeUnit.MILLISECONDS,
@@ -67,42 +68,37 @@ public class DataImportPushTask implements Runnable {
      @Override
     public void run() {
         logger.error("正在消费的数据"+value.toString());
-         improtDataVEList(value);
-/*
+  /*       improtDataVEList(value);*/
          System.out.println("------"+type+"----------");
             if("V".equals(type)){
-                improtDataVEList(value);
+                improtDataVList(value);
             }
             if("E".equals(type)){
                 improtDataEList(value);
             }
-*/
 
 
     }
 
 
-    public  void improtDataVEList(List<JSONObject> list) {
+    public  void improtDataVList(List<JSONObject> list) {
         logger.error(">>>>>>正在遍历插入数据--V-->>>>>>>>>");
         long startTime=System.currentTimeMillis();
        JanusGraphConfig janusGraphConfig = new JanusGraphConfig();
         JanusGraphTransaction tx= janusGraphConfig.graph.newTransaction();
         GraphTraversalSource g= janusGraphConfig.graph.traversal();
+        String lable = null;
         for (JSONObject p : list) {
             try {
-
-                if(p.containsKey("lable")){
                     new ImportDataImpl().importDataV(p, tx, g);
-                }
-                if(p.containsKey("edgue")){
-                    new ImportDataImpl().importDataE(p, g);
-                }
+
             } catch (Exception E) {
                 logger.error(">>>>>>" + p.toString() + ">>>>>>>>>插入异常"+E.getMessage());
 
                 E.printStackTrace();
             }
         }
+
         try {
                 if(tx.isClosed()){
                     tx = new JanusGraphConfig().graph.newTransaction();
@@ -112,17 +108,17 @@ public class DataImportPushTask implements Runnable {
                     tx.commit();
 
                 }
-                g.tx().commit();
-                g.tx().open();
-                logger.warn("Current Position  >>----" +
-                        " "+"---提交---;话费时间；"+(System.currentTimeMillis()-startTime)/1000+"秒");
+                logger.warn("Current Position  >>----V" +
+                        " "+"---提交---;花费时间；"+(System.currentTimeMillis()-startTime)/1000+"秒");
 
+                 g.tx().commit();
+                 tx.close();
+                 g.close();
+                janusGraphConfig.close();
             } catch (java.lang.Exception e) {
                 e.printStackTrace();
             } finally {
                 try {
-                    g.close();
-                    tx.close();
 
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -131,15 +127,17 @@ public class DataImportPushTask implements Runnable {
 
 
     }
-/*    public  void improtDataEList(List<JSONObject> list) {
+    public  void improtDataEList(List<JSONObject> list) {
         logger.error(">>>>>>正在遍历插入数据---E--->>>>>>>>>");
         long startTime=System.currentTimeMillis();
         JanusGraphConfig janusGraphConfig = new JanusGraphConfig();
         JanusGraphTransaction tx= janusGraphConfig.graph.newTransaction();
         GraphTraversalSource g= janusGraphConfig.graph.traversal();
+        String edgue = null;
         for (JSONObject p : list) {
             try {
-                new ImportDataImpl().importDataE(p, g);
+                    new ImportDataImpl().importDataE(p, g);
+
             } catch (Exception E) {
                 logger.error(">>>>>>" + p.toString() + ">>>>>>>>>插入异常"+E.getMessage());
 
@@ -149,15 +147,15 @@ public class DataImportPushTask implements Runnable {
         try {
                 g.tx().commit();
                 g.tx().open();
-            logger.warn("Current Position  >>----" +
-                    " "+"---提交---;话费时间；"+(System.currentTimeMillis()-startTime)/1000+"秒");
-
+            logger.warn("Current Position  >>----E" +
+                    " "+"---提交---;花费时间；"+(System.currentTimeMillis()-startTime)/1000+"秒");
+            g.close();
+            janusGraphConfig.close();
         } catch (java.lang.Exception e) {
             e.printStackTrace();
         } finally {
             try {
-                g.close();
-                tx.close();
+
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -165,7 +163,8 @@ public class DataImportPushTask implements Runnable {
         }
 
 
-    }*/
+    }
+
 
 
 

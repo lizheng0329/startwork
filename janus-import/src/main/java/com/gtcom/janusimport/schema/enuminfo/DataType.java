@@ -21,6 +21,7 @@ public enum DataType {
   Date(java.util.Date.class),
   Enum(java.lang.Enum.class),
   Class(java.lang.Class.class),
+
   NULL(null);
 
   private Class<?> clazz;
